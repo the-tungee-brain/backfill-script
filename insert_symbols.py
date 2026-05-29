@@ -14,14 +14,29 @@ ETF_CSV_PATH = Path("nasdaq_etf.csv")
 
 def require_env(name: str) -> str:
     value = os.environ.get(name)
-    if not value:
+    if not value or not value.strip():
         raise RuntimeError(f"Missing required environment variable: {name}")
-    return value
+    return value.strip()
 
 
-DB_USER = require_env("DB_USER")
-DB_PASSWORD = require_env("DB_PASSWORD")
-DB_DSN = require_env("DB_DSN")
+def connect_db():
+    try:
+        return oracledb.connect(
+            user=require_env("DB_USER"),
+            password=require_env("DB_PASSWORD"),
+            dsn=require_env("DB_DSN"),
+        )
+    except oracledb.OperationalError as exc:
+        message = str(exc)
+        if "12506" in message or "DPY-6000" in message:
+            raise RuntimeError(
+                "Oracle listener refused the connection (ORA-12506). "
+                "Your local machine can reach the DB, but GitHub Actions runners "
+                "use different public IPs. In OCI Console open your Autonomous "
+                "Database → Network → Access Control List and allow access from "
+                "all public IPs (0.0.0.0/0), then re-run the workflow."
+            ) from exc
+        raise
 
 HEADERS = {
     "User-Agent": "Tomcrest support@tomcrest.com",
@@ -101,11 +116,7 @@ def merge_sources():
 def load_tickers_to_oracle():
     rows = merge_sources()
 
-    with oracledb.connect(
-        user=DB_USER,
-        password=DB_PASSWORD,
-        dsn=DB_DSN,
-    ) as conn:
+    with connect_db() as conn:
 
         with conn.cursor() as cur:
 
