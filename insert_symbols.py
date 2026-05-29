@@ -1,32 +1,30 @@
+import csv
+import os
+from pathlib import Path
+
 import oracledb
 import requests
-import csv
-from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 ETF_CSV_PATH = Path("nasdaq_etf.csv")
 
-DB_USER = "ADMIN"
-DB_PASSWORD = "Powerpocketdb123"
 
-DB_DNS = """
-(description=
-    (retry_count=20)
-    (retry_delay=3)
-    (address=
-        (protocol=tcps)
-        (port=1521)
-        (host=adb.us-sanjose-1.oraclecloud.com)
-    )
-    (connect_data=
-        (service_name=g81e836de12214d_powerpocketdb_tp.adb.oraclecloud.com)
-    )
-    (security=(ssl_server_dn_match=yes))
-)
-"""
+def require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+DB_USER = require_env("DB_USER")
+DB_PASSWORD = require_env("DB_PASSWORD")
+DB_DSN = require_env("DB_DSN")
 
 HEADERS = {
-    "User-Agent": "Tomcrest contact@tomcrest.com",
+    "User-Agent": "Tomcrest support@tomcrest.com",
     "Accept-Encoding": "gzip, deflate",
     "Host": "www.sec.gov",
 }
@@ -91,7 +89,6 @@ def merge_sources():
     sec_rows = fetch_sec_tickers()
     etf_rows = fetch_etf_csv()
 
-    # ETF overrides stock if duplicate exists
     sec_rows.update(etf_rows)
 
     merged = list(sec_rows.values())
@@ -107,7 +104,7 @@ def load_tickers_to_oracle():
     with oracledb.connect(
         user=DB_USER,
         password=DB_PASSWORD,
-        dsn=DB_DNS,
+        dsn=DB_DSN,
     ) as conn:
 
         with conn.cursor() as cur:

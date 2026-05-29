@@ -1,0 +1,30 @@
+name: Sync Ticker Symbols
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+      timezone: America/Los_Angeles
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Sync ticker symbols
+        run: python insert_symbols.py
+        env:
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_DSN: ${{ secrets.DB_DSN }}

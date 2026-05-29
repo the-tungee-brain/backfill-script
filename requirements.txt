@@ -1,0 +1,14 @@
+oracledb>=3.4.2
+python-dotenv>=1.0.0
+requests>=2.33.0
+certifi==2026.4.22
+cffi==2.0.0
+charset-normalizer==3.4.7
+cryptography==46.0.7
+idna==3.12
+oracledb==3.4.2
+pycparser==3.0
+python-dotenv==1.2.2
+requests==2.33.1
+typing_extensions==4.15.0
+urllib3==2.6.3
