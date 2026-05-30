@@ -10,6 +10,9 @@ load_dotenv()
 
 SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 ETF_CSV_PATH = Path("nasdaq_etf.csv")
+STOCK_LOGO_URL_TEMPLATE = (
+    "https://raw.githubusercontent.com/the-tungee-brain/stock-icons/main/ticker_icons/{symbol}.png"
+)
 
 
 def require_env(name: str) -> str:
@@ -69,6 +72,7 @@ def fetch_sec_tickers():
             "symbol": symbol[:16],
             "title": title[:255],
             "asset_type": "STOCK",
+            "logo_url": STOCK_LOGO_URL_TEMPLATE.format(symbol=symbol[:16]),
         }
 
     print(f"Fetched {len(rows)} SEC tickers.")
@@ -93,6 +97,7 @@ def fetch_etf_csv():
                 "symbol": symbol[:16],
                 "title": name[:255],
                 "asset_type": "ETF",
+                "logo_url": None,
             }
 
     print(f"Loaded {len(rows)} ETF rows from CSV.")
@@ -126,7 +131,8 @@ def load_tickers_to_oracle():
                     SELECT
                         :symbol AS symbol,
                         :title AS title,
-                        :asset_type AS asset_type
+                        :asset_type AS asset_type,
+                        :logo_url AS logo_url
                     FROM dual
                 ) src
                 ON (t.symbol = src.symbol)
@@ -134,18 +140,21 @@ def load_tickers_to_oracle():
                 WHEN MATCHED THEN
                     UPDATE SET
                         t.title = src.title,
-                        t.asset_type = src.asset_type
+                        t.asset_type = src.asset_type,
+                        t.logo_url = src.logo_url
 
                 WHEN NOT MATCHED THEN
                     INSERT (
                         symbol,
                         title,
-                        asset_type
+                        asset_type,
+                        logo_url
                     )
                     VALUES (
                         src.symbol,
                         src.title,
-                        src.asset_type
+                        src.asset_type,
+                        src.logo_url
                     )
             """
 
