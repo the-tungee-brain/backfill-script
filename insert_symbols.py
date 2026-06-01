@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 from pathlib import Path
 
 import oracledb
@@ -13,6 +14,55 @@ ETF_CSV_PATH = Path("nasdaq_etf.csv")
 STOCK_LOGO_URL_TEMPLATE = (
     "https://raw.githubusercontent.com/the-tungee-brain/stock-icons/main/ticker_icons/{symbol}.png"
 )
+UPPERCASE_TOKENS = {
+    "adr",
+    "ag",
+    "apa",
+    "etf",
+    "eu",
+    "lp",
+    "llc",
+    "nv",
+    "plc",
+    "reit",
+    "sa",
+    "se",
+    "uk",
+    "us",
+}
+BRAND_OVERRIDES = {
+    "jpmorgan": "JPMorgan",
+}
+WORD_PARTS = re.compile(r"^([^\w]*)([\w&]+)([^\w]*)$")
+SEC_TITLE_JUNK = re.compile(r"\s*/\w+/?")
+
+
+def format_word(word: str) -> str:
+    match = WORD_PARTS.match(word)
+    if not match:
+        return word
+
+    prefix, core, suffix = match.groups()
+    if not core:
+        return word
+
+    lower_core = core.lower()
+    if core != core.upper() and core != core.lower():
+        return word
+    if lower_core in BRAND_OVERRIDES:
+        formatted = BRAND_OVERRIDES[lower_core]
+    elif lower_core in UPPERCASE_TOKENS:
+        formatted = core.upper()
+    else:
+        formatted = lower_core.capitalize()
+
+    return f"{prefix}{formatted}{suffix}"
+
+
+def format_title(title: str) -> str:
+    cleaned = SEC_TITLE_JUNK.sub("", title.strip())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return " ".join(format_word(word) for word in cleaned.split())
 
 
 def require_env(name: str) -> str:
@@ -70,7 +120,7 @@ def fetch_sec_tickers():
 
         rows[symbol] = {
             "symbol": symbol[:16],
-            "title": title[:255],
+            "title": format_title(title)[:255],
             "asset_type": "STOCK",
             "logo_url": STOCK_LOGO_URL_TEMPLATE.format(symbol=symbol[:16]),
         }
@@ -95,7 +145,7 @@ def fetch_etf_csv():
 
             rows[symbol] = {
                 "symbol": symbol[:16],
-                "title": name[:255],
+                "title": format_title(name)[:255],
                 "asset_type": "ETF",
                 "logo_url": None,
             }
